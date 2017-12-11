@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Robot</string>
+    <string name="accessibility_description">启动Robot服务，支持微信。</string>
+    <string name="service_name">Robot服务</string>
+    <string name="open_service_title">需要开启辅助服务正常使用</string>
+    <string name="open_service_button">打开辅助服务</string>
+    <string name="tips">找到Robot服务，然后开启服务即可</string>
+</resources>
