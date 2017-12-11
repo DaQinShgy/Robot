@@ -18,6 +18,7 @@ public class StringUtil {
      *
      * @param str
      * @return if string is null or its size is 0 or it is made by space, return
+     *
      * true, else return false.
      */
     public static boolean isBlank(String str) {
