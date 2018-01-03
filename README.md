@@ -1,9 +1,14 @@
    之前用过基于web版微信的机器人，但是有几个缺点：比如新号不能登录，经常被封等问题。app版的微信机器人原理是模拟人工点击，能避免web版的很多问题，缺点是速度比较慢，成本比较高。目前实现的功能是自动回复消息、主动发送消息、同意好友申请。 
 先上个图感受一下： 
 
-自动回复：![image](https://github.com/DaQinShgy/Robot/blob/master/sendMsg.gif)
-同意好友申请：![image](https://github.com/DaQinShgy/Robot/blob/master/agreeAddFriend.gif)
-主动发送消息：![image](https://github.com/DaQinShgy/Robot/blob/master/pushMsg.gif)
+自动回复：
+![image](https://github.com/DaQinShgy/Robot/blob/master/sendMsg.gif)
+
+同意好友申请：
+![image](https://github.com/DaQinShgy/Robot/blob/master/agreeAddFriend.gif)
+
+主动发送消息：
+![image](https://github.com/DaQinShgy/Robot/blob/master/pushMsg.gif)
  
  1、准备工作：老版本微信，我用的是6.5.10，之所以不用最新版是因为聊天界面的文本区老版本是textview，新版本改成了view，导致无法拿到消息内容。 
     
