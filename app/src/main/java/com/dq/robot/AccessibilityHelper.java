@@ -183,4 +183,18 @@ public final class AccessibilityHelper {
         }
     }
 
+    /**
+     * scroll事件
+     */
+    public static boolean scroll(AccessibilityNodeInfo nodeInfo) {
+        if (nodeInfo == null) {
+            return false;
+        }
+        if (nodeInfo.isScrollable()) {
+            return nodeInfo.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
+        } else {
+            return performClick(nodeInfo.getParent());
+        }
+    }
+
 }

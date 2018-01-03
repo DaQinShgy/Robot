@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,6 +16,8 @@ import android.widget.Toast;
 
 import java.io.DataOutputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
@@ -58,6 +61,9 @@ public class WeiXinService extends AccessibilityService {
     //是否在输入
     private boolean isInputEnter = false;
 
+    //是否在设置备注
+    private boolean isSetBz = false;
+
     //加好友
     private boolean isAdd = false;
 
@@ -67,22 +73,21 @@ public class WeiXinService extends AccessibilityService {
     //第一次发送
     private boolean isFirstSend = false;
 
-    //是否是朋友圈
-    private boolean isCircle = false;
-
     //是否主动发送消息
     private boolean isPushMsg = false;
 
-    //是否输入了搜索词
+    //是否输入了昵称
     private boolean isPushCode = false;
 
-    private String wxMsgStr;
-
-    //执行返回操作
     private boolean isBack = false;
 
     //微信号
     private String wxNoStr;
+
+    //最新一条微信消息
+    private String wxMsgStr;
+
+    private boolean isAddFriendCheck = false;
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     @Override
@@ -135,6 +140,18 @@ public class WeiXinService extends AccessibilityService {
                 //详细资料界面---微信号
                 String wxNoId = "com.tencent.mm:id/agb";
                 AccessibilityNodeInfo targetWxNo = AccessibilityHelper.findNodeInfosById(nodeInfo, wxNoId);
+                //详细资料界面---设置备注
+                String wxSetBzId = "com.tencent.mm:id/agr";
+                AccessibilityNodeInfo targetSetBz = AccessibilityHelper.findNodeInfosById(nodeInfo, wxSetBzId);
+                //详细资料界面---昵称
+                String wxNickId = "com.tencent.mm:id/agl";
+                AccessibilityNodeInfo targetNick = AccessibilityHelper.findNodeInfosById(nodeInfo, wxNickId);
+                //详细资料界面---备注
+                String wxBzId = "com.tencent.mm:id/ms";
+                AccessibilityNodeInfo targetBz = AccessibilityHelper.findNodeInfosById(nodeInfo, wxBzId);
+                //设置备注界面---设置备注输入框
+                String setEtId = "com.tencent.mm:id/ahu";
+                AccessibilityNodeInfo targetSetEt = AccessibilityHelper.findNodeInfosById(nodeInfo, setEtId);
                 if (targetChatting != null) {
                     String wxSendId = "com.tencent.mm:id/a5k";
                     AccessibilityNodeInfo targetSend = AccessibilityHelper.findNodeInfosById(nodeInfo, wxSendId);
@@ -155,6 +172,12 @@ public class WeiXinService extends AccessibilityService {
                         if (targetMsg != null && targetMsg.getText() != null) {
                             wxMsgStr = targetMsg.getText().toString().trim();
                             Log.e(TAG, "other:" + wxMsgStr);
+                        } else {
+                            showToast("对方没有发送任何文字消息");
+                            isSend = false;
+                            isBack = true;
+                            execShellCmd(String.format("input tap  %s %s", getRandom(5, 80), getRandom(80, 130)));
+                            return;
                         }
                         //给对方发消息
                         getHandler().postDelayed(new Runnable() {
@@ -173,8 +196,7 @@ public class WeiXinService extends AccessibilityService {
                                 if (StringUtil.isBlank(wxMsgStr)) {
                                     return;
                                 }
-                                exeCmd(String.format("am broadcast -a ADB_INPUT_TEXT --es msg \"%s\"", "你好啊"));
-
+                                exeCmd(String.format("am broadcast -a ADB_INPUT_TEXT --es msg \"%s\"", "内测数据"));
                             }
                         }, 100);
                     } else if (targetSend != null) {
@@ -182,8 +204,13 @@ public class WeiXinService extends AccessibilityService {
                         getHandler().postDelayed(new Runnable() {
                             @Override
                             public void run() {
-                                isSend = false;
                                 execShellCmd(String.format("input tap  %s %s", getRandom(5, 80), getRandom(80, 130)));
+                                try {
+                                    Thread.sleep(500);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                                isSend = false;
                             }
                         }, 500);
                     }
@@ -192,16 +219,57 @@ public class WeiXinService extends AccessibilityService {
                         wxNoStr = targetWxNo.getText().toString().trim().replace("微信号: ", "");
                         isInputEnter = false;
                         Log.e(TAG, "wxNoStr:" + wxNoStr);
-                        execShellCmd(String.format("input tap  %s %s", getRandom(5, 80), getRandom(80, 130)));
                         if ("weixin".equals(wxNoStr)) {
-                            getHandler().postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    execShellCmd(String.format("input tap  %s %s", getRandom(5, 80), getRandom(80, 130)));
-                                }
-                            }, 100);
+                            isSend = false;
+                            isBack = true;
                         }
+                        execShellCmd(String.format("input tap  %s %s", getRandom(5, 80), getRandom(80, 130)));
                     }
+                } else if (targetNick != null && targetBz != null) {
+                    if (StringUtil.isBlank(wxNoStr)) {
+                        wxNoStr = targetBz.getText().toString().trim().replace("微信号: ", "");
+                        isInputEnter = false;
+                        Log.e(TAG, "wxNoStr:" + wxNoStr);
+                        if ("weixin".equals(wxNoStr)) {
+                            isSend = false;
+                            isBack = true;
+                        }
+                        execShellCmd(String.format("input tap  %s %s", getRandom(5, 80), getRandom(80, 130)));
+                    }
+                } else if (targetSetBz != null) {
+                    //没有微信号，设置备注作为唯一标示
+                    isSetBz = true;
+                    AccessibilityHelper.performClick(targetSetBz);
+                } else if (targetSetEt != null) {
+                    if (isSetBz) {
+                        isSetBz = false;
+                    } else {
+                        return;
+                    }
+                    getHandler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            execShellCmd(String.format("input tap  %s %s", getRandom(300, 800), getRandom(377, 485)));
+                            try {
+                                Thread.sleep(300);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            execShellCmd(String.format("input tap  %s %s", getRandom(930, 980), getRandom(377, 485)));
+                            try {
+                                Thread.sleep(300);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            exeCmd(String.format("am broadcast -a ADB_INPUT_TEXT --es msg \"%s\"", System.currentTimeMillis() + ""));
+                            try {
+                                Thread.sleep(300);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            execShellCmd(String.format("input tap  %s %s", getRandom(876, 1056), getRandom(87, 177)));
+                        }
+                    }, 300);
                 } else {
                     String wxNewId = "android:id/text1";
                     AccessibilityNodeInfo targetNew = AccessibilityHelper.findNodeInfosById(nodeInfo, wxNewId);
@@ -245,14 +313,19 @@ public class WeiXinService extends AccessibilityService {
                     AccessibilityHelper.performClick(targetCheck);
                 } else if (targetNewFriendImg != null) {
                     AccessibilityHelper.performClick(targetNewFriendImg);
-                } else if (targetAgree != null) {
-                    AccessibilityHelper.performClick(targetAgree);
+                } else if (targetAgreeList != null) {
+                    for (int i = 0; i < targetAgreeList.size(); i++) {
+                        if (targetAgreeList.get(i) != null && targetAgreeList.get(i).getText() != null &&
+                                "接受".equals(targetAgreeList.get(i).getText().toString().trim())) {
+                            AccessibilityHelper.performClick(targetAgreeList.get(i));
+                            break;
+                        }
+                    }
                 } else if (targetDone != null) {
                     isAdd = false;
                     AccessibilityHelper.performClick(targetDone);
                 } else if (targetCircleRed != null) {
                     isAdd = false;
-                    isCircle = true;
                     AccessibilityHelper.performClick(targetCircleRed);
                 }
             } else if (isFirst) {
@@ -274,7 +347,7 @@ public class WeiXinService extends AccessibilityService {
                     getHandler().postDelayed(new Runnable() {
                         @Override
                         public void run() {
-                            String msg = "初次联系，多多关照";
+                            String msg = "你好，很高兴认识你。";
                             exeCmd(String.format("am broadcast -a ADB_INPUT_TEXT --es msg \"%s\"", msg));
                             try {
                                 Thread.sleep(2000);
@@ -295,6 +368,27 @@ public class WeiXinService extends AccessibilityService {
                             isFirst = false;
                             isFirstSend = false;
                             isBack = true;
+                            //发送图片
+//                            String moreAddId = "com.tencent.mm:id/a2e";
+//                            AccessibilityNodeInfo targetMoreAdd = AccessibilityHelper.findNodeInfosById(nodeInfo, moreAddId);
+//                            if (targetMoreAdd != null) {
+//                                AccessibilityHelper.performClick(targetMoreAdd);
+//                            }
+//                            try {
+//                                Thread.sleep(1000);
+//                            } catch (InterruptedException e) {
+//                                e.printStackTrace();
+//                            }
+//                            String collectionId = "com.tencent.mm:id/ky";
+//                            List<AccessibilityNodeInfo> targetCollection = AccessibilityHelper.findNodeInfosByIds(nodeInfo, collectionId);
+//                            if (targetCollection != null) {
+//                                for (int i = 0; i < targetCollection.size(); i++) {
+//                                    if (targetCollection.get(i) != null && targetCollection.get(i).getText() != null &&
+//                                            targetCollection.get(i).getText().toString().trim().contains("我的收藏")) {
+//                                        AccessibilityHelper.performClick(targetCollection.get(i));
+//                                    }
+//                                }
+//                            }
                         }
                     }, 500);
                 } else if (targetCollImg != null) {
@@ -304,14 +398,6 @@ public class WeiXinService extends AccessibilityService {
                     AccessibilityHelper.performClick(targetCollSend);
                     isFirst = false;
                     isFirstSend = false;
-                    isBack = true;
-                }
-            } else if (isCircle) {
-                String circleNewsId = "com.tencent.mm:id/csy";
-                AccessibilityNodeInfo targetCircleNews = AccessibilityHelper.findNodeInfosById(nodeInfo, circleNewsId);
-                if (targetCircleNews != null) {
-                    AccessibilityHelper.performClick(targetCircleNews);
-                    isCircle = false;
                     isBack = true;
                 }
             } else if (isPushMsg) {
@@ -334,7 +420,7 @@ public class WeiXinService extends AccessibilityService {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    exeCmd(String.format("am broadcast -a ADB_INPUT_TEXT --es msg \"%s\"", "zhangyu"));
+                    exeCmd(String.format("am broadcast -a ADB_INPUT_TEXT --es msg \"%s\"", "Hmj9406"));
                 } else if (targetRecord != null) {
                     isInputEnter = false;
                     AccessibilityHelper.performClick(targetRecord);
@@ -357,7 +443,7 @@ public class WeiXinService extends AccessibilityService {
                                 } catch (InterruptedException e) {
                                     e.printStackTrace();
                                 }
-                                exeCmd(String.format("am broadcast -a ADB_INPUT_TEXT --es msg \"%s\"", "你好啊"));
+                                exeCmd(String.format("am broadcast -a ADB_INPUT_TEXT --es msg \"%s\"", "你好！！！"));
                             }
                         }, 100);
                     } else if (targetSend != null) {
@@ -372,6 +458,41 @@ public class WeiXinService extends AccessibilityService {
                             }
                         }, 500);
                     }
+                } else {
+//                    isPushMsg = false;
+//                    execShellCmd(String.format("input tap  %s %s", getRandom(5, 80), getRandom(80, 130)));
+                }
+            } else if (isAddFriendCheck) {
+                //通讯录新的朋友
+                String friendLayoutId = "com.tencent.mm:id/aya";
+                AccessibilityNodeInfo targetFriendLayout = AccessibilityHelper.findNodeInfosById(nodeInfo, friendLayoutId);
+                //listview
+                String listViewId = "com.tencent.mm:id/ayr";
+                AccessibilityNodeInfo targetListView = AccessibilityHelper.findNodeInfosById(nodeInfo, listViewId);
+                //listview
+                String noneId = "com.tencent.mm:id/ayv";
+                AccessibilityNodeInfo targetNone = AccessibilityHelper.findNodeInfosById(nodeInfo, noneId);
+                if (targetFriendLayout != null) {
+                    AccessibilityHelper.performClick(targetFriendLayout);
+                } else if (targetListView != null) {
+                    //同意按钮
+                    String agreeId = "com.tencent.mm:id/aym";
+                    AccessibilityNodeInfo targetAgree = AccessibilityHelper.findNodeInfosById(nodeInfo, agreeId);
+                    if (targetAgree != null) {
+                        isAddFriendCheck = false;
+                        isAdd = true;
+                        AccessibilityHelper.performClick(targetAgree);
+                    } else {
+                        if (!AccessibilityHelper.scroll(targetListView)) {
+                            isAddFriendCheck = false;
+                            isBack = true;
+                            execShellCmd(String.format("input tap  %s %s", getRandom(5, 80), getRandom(80, 130)));
+                        }
+                    }
+                } else if (targetNone != null) {
+                    isAddFriendCheck = false;
+                    isBack = true;
+                    execShellCmd(String.format("input tap  %s %s", getRandom(5, 80), getRandom(80, 130)));
                 }
             } else {
                 //列表小红点
@@ -382,25 +503,49 @@ public class WeiXinService extends AccessibilityService {
                 final AccessibilityNodeInfo targetBottomRed = AccessibilityHelper.findNodeInfosById(nodeInfo, bottomRedId);
                 if (targetListRed != null) {
                     Log.e(TAG, "有列表小红点了");
-                    isSend = true;
-                    wxNoStr = null;
-                    wxMsgStr = null;
                     //有列表小红点
                     getHandler().postDelayed(new Runnable() {
                         @Override
                         public void run() {
+                            Log.e(TAG, "列表小红点 点击了");
+                            wxNoStr = null;
+                            wxMsgStr = null;
                             AccessibilityHelper.performClick(targetListRed);
+                            isSend = true;
                         }
-                    }, 500);
+                    }, 800);
                 } else if (targetBottomRed != null) {
                     Log.e(TAG, "有底部小红点了");
-                    isAdd = true;
-                    getHandler().postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            AccessibilityHelper.performClick(targetBottomRed);
-                        }
-                    }, 500);
+                    Rect outBounds = new Rect();
+                    targetBottomRed.getBoundsInScreen(outBounds);
+                    Rect mStandarList = new Rect(150, 1770, 220, 1830);
+                    Rect mStandarAdd = new Rect(420, 1770, 490, 1830);
+                    if (mStandarList.contains(outBounds)) {
+                        //聊天底部小红点
+                        getHandler().postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                AccessibilityHelper.performClick(targetBottomRed);
+                                try {
+                                    Thread.sleep(getRandomInt(100, 200));
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                                AccessibilityHelper.performClick(targetBottomRed);
+                            }
+                        }, 100);
+                    } else if (mStandarAdd.contains(outBounds)) {
+                        //加好友底部小红点
+                        getHandler().postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+//                            newFriendNum = 0;
+//                            newFriendIndex = 0;
+                                isAdd = true;
+                                AccessibilityHelper.performClick(targetBottomRed);
+                            }
+                        }, 800);
+                    }
                 } else {
                     //详细资料界面
                     String settingNameId = "com.tencent.mm:id/agb";
@@ -420,6 +565,16 @@ public class WeiXinService extends AccessibilityService {
         Random random = new Random();
         int s = random.nextInt(max) % (max - min + 1) + min;
         return String.valueOf(s);
+    }
+
+    public int getRandomInt(int min, int max) {
+        Random random = new Random();
+        int s = random.nextInt(max) % (max - min + 1) + min;
+        return s;
+    }
+
+    private void showToast(String str) {
+        Toast.makeText(this, str, Toast.LENGTH_SHORT).show();
     }
 
     /**
