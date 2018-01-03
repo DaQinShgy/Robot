@@ -2,12 +2,15 @@
 先上个图感受一下： 
 
 自动回复：
+
 ![image](https://github.com/DaQinShgy/Robot/blob/master/sendMsg.gif)
 
 同意好友申请：
+
 ![image](https://github.com/DaQinShgy/Robot/blob/master/agreeAddFriend.gif)
 
 主动发送消息：
+
 ![image](https://github.com/DaQinShgy/Robot/blob/master/pushMsg.gif)
  
  1、准备工作：老版本微信，我用的是6.5.10，之所以不用最新版是因为聊天界面的文本区老版本是textview，新版本改成了view，导致无法拿到消息内容。 
