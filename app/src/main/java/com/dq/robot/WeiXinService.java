@@ -420,7 +420,7 @@ public class WeiXinService extends AccessibilityService {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    exeCmd(String.format("am broadcast -a ADB_INPUT_TEXT --es msg \"%s\"", "Hmj9406"));
+                    exeCmd(String.format("am broadcast -a ADB_INPUT_TEXT --es msg \"%s\"", "xxx"));
                 } else if (targetRecord != null) {
                     isInputEnter = false;
                     AccessibilityHelper.performClick(targetRecord);
